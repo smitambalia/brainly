@@ -1,3 +1,4 @@
-import { serverConfig } from "./serverConfig";
+export { serverConfig } from "./serverConfig";
 
-export { serverConfig };
+export { dbConfig } from "./dbConfig";
+

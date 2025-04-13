@@ -1,9 +1,7 @@
-import mongoose ,{ model, Schema } from "mongoose";
-// mongodb://localhost:27017/
-mongoose.connect("mongodb://localhost:27017/brainly");
+import { model, Schema } from "mongoose";
 const userSchema = new Schema({
   username: { type: String, unique: true, required: true },
-  password: { type: String, required: true }
+  password: { type: String, required: true },
 });
 
 export const UserModel = model("User", userSchema);
