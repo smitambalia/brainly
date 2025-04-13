@@ -30,3 +30,12 @@ yarn-error.log*
 
 # Other
 coverage/
+
+# Temporary files for mongo
+*.wt
+*.tmp
+*.temp
+*.bak
+*.data
+*.turtle
+mongodb/
