@@ -137,6 +137,22 @@ app.get(
     });
   }
 );
+
+app.delete("/api/v1/content", userMiddleware, async ( req: Request, res: Response) => {
+    const { contentId } = req.body;
+    const content = await ContentModel.deleteMany({
+        //@ts-ignore
+        userId: req.userId,
+        id: contentId,
+    });
+
+    res.status(200).json({
+        message: "Content deleted successfully",
+        statusCode: 200,
+        status: "success",
+        body: content
+    });
+})
 app.get("/", (req: Request, res: Response) => {
   console.log("Request received at root endpoint");
   res.status(200).json({
