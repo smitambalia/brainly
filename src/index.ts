@@ -16,6 +16,8 @@ import jwt from "jsonwebtoken";
 // Middleware to parse JSON request bodies
 
 import { userMiddleware } from "./middlewares";
+import { LinkModel } from "./db";
+import { randomHash } from "./utils/intex";
 app.use(express.json()); // Middleware to parse URL-encoded request bodies
 app.use(express.urlencoded({ extended: true }));
 
@@ -127,7 +129,7 @@ app.get(
     const contents = await ContentModel.find({
       //@ts-ignore
       userId: req.userId,
-    }).populate("userId","username");
+    }).populate("userId", "username");
 
     res.status(200).json({
       message: "Content fetched successfully",
@@ -138,21 +140,98 @@ app.get(
   }
 );
 
-app.delete("/api/v1/content", userMiddleware, async ( req: Request, res: Response) => {
+app.delete(
+  "/api/v1/content",
+  userMiddleware,
+  async (req: Request, res: Response) => {
     const { contentId } = req.body;
     const content = await ContentModel.deleteMany({
-        //@ts-ignore
-        userId: req.userId,
-        id: contentId,
+      //@ts-ignore
+      userId: req.userId,
+      id: contentId,
     });
 
     res.status(200).json({
-        message: "Content deleted successfully",
+      message: "Content deleted successfully",
+      statusCode: 200,
+      status: "success",
+      body: content,
+    });
+  }
+);
+
+app.post(
+  "/api/v1/brain/share",
+  userMiddleware,
+  async (req: Request, res: Response) => {
+    const { share } = req.body;
+    if (share) {
+      const hash = randomHash(10);
+      await LinkModel.create({
+        //@ts-ignore
+        userId: req.userId,
+        hash: hash,
+      });
+      res.status(200).json({
+        message: "/share/" + hash,
         statusCode: 200,
         status: "success",
-        body: content
+        body: {},
+      });
+    } else {
+      await LinkModel.deleteOne({
+        //@ts-ignore
+        userId: req.userId,
+      });
+      res.status(200).json({
+        message: "Link deleted successfully",
+        statusCode: 200,
+        status: "success",
+        body: {},
+      }); 
+    }
+  }
+);
+
+app.get("/api/v1/brain/:sharelink", async (req: Request, res: Response) => {
+  try {
+    const { sharelink } = req.params;
+
+    const link = await LinkModel.findOne({
+      hash: sharelink,
     });
-})
+
+    if (!link) {
+      res.status(404).json({
+        message: "Link not found",
+        statusCode: 404,
+        status: "error",
+        body: [],
+      });
+      return;
+    }
+
+    const contents = await ContentModel.find({
+      //@ts-ignore
+      userId: link.userId,
+    }).populate("userId", "username");
+
+    res.status(200).json({
+      message: "Contents fetched successfully",
+      statusCode: 200,
+      status: "success",
+      body: contents,
+    });
+  } catch (error) {
+    res.status(500).json({
+      messsage: "Internal server error",
+      statusCode: 500,
+      status: "error",
+      body: [],
+    });
+  }
+});
+
 app.get("/", (req: Request, res: Response) => {
   console.log("Request received at root endpoint");
   res.status(200).json({
