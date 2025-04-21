@@ -3,6 +3,8 @@ import { Request, Response } from "express";
 const app = express();
 
 import { serverConfig } from "./config";
+import { redisClient } from "./config";
+
 import cors from "cors";
 const PORT = serverConfig.serverPort || 5001;
 console.log(`Server port: ${PORT}`);
@@ -103,22 +105,42 @@ app.post(
   "/api/v1/content",
   userMiddleware,
   async (req: Request, res: Response) => {
-    const { title, link } = req.body;
+    try {
+      const { title, link } = req.body;
+      //@ts-ignore
+      const userId = req.userId;
 
-    await ContentModel.create({
-      title,
-      link,
-      //@ts-ignore
-      userId: req.userId,
-      tags: [],
-    });
-    res.status(201).json({
-      message: "Content created successfully",
-      statusCode: 201,
-      status: "success",
-      //@ts-ignore
-      body: { title, link, userId: req.userId, tags: [] },
-    });
+      await redisClient.connect();
+
+      await redisClient.set(userId, JSON.stringify({ title, link, userId }), {
+        EX: 60 * 60, // Set expiration time to 1 hour
+        NX: true, // Set the key only if it does not already exist
+      });
+
+      await redisClient.quit();
+
+      await ContentModel.create({
+        title,
+        link,
+        userId,
+        tags: [],
+      });
+      res.status(201).json({
+        message: "Content created successfully",
+        statusCode: 201,
+        status: "success",
+        body: { title, link, userId, tags: [] }, // Updated to use userid
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({
+        message: "Internal server error",
+        statusCode: 500,
+        status: "error",
+        body: [],
+      });
+      return;
+    }
   }
 );
 
@@ -126,17 +148,44 @@ app.get(
   "/api/v1/content",
   userMiddleware,
   async (req: Request, res: Response) => {
-    const contents = await ContentModel.find({
-      //@ts-ignore
-      userId: req.userId,
-    }).populate("userId", "username");
+    try { 
+      // @ts-ignore
+      const userId = req.userId;
+      await redisClient.connect();
+      const cachedContent = await redisClient.get(userId);
+      if (cachedContent) {
+        const parsedContent = JSON.parse(cachedContent);
+        res.status(200).json({
+          message: "Content fetched successfully",
+          statusCode: 200,
+          status: "success",
+          body: parsedContent,
+        });
+        return;
+      }
 
-    res.status(200).json({
-      message: "Content fetched successfully",
-      statusCode: 200,
-      status: "success",
-      body: contents,
-    });
+      const contents = await ContentModel.find({
+        userId
+      }).populate("userId", "username");
+
+      res.status(200).json({
+        message: "Content fetched successfully",
+        statusCode: 200,
+        status: "success",
+        body: contents,
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({
+        message: "Internal server error",
+        statusCode: 500,
+        status: "error",
+        body: [],
+      });
+    }
+    finally{ 
+      await redisClient.quit(); 
+    }
   }
 );
 
@@ -188,7 +237,7 @@ app.post(
         statusCode: 200,
         status: "success",
         body: {},
-      }); 
+      });
     }
   }
 );
