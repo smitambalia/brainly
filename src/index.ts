@@ -291,10 +291,21 @@ app.get("/", (req: Request, res: Response) => {
   });
 });
 
-app.listen(PORT, () => {
-  mongoose.connect(
+app.listen(PORT, async () => {
+  /* mongoose.connect(
     `mongodb://${dbConfig.dbHost}:${dbConfig.dbPort}/${dbConfig.dbName}`
-  );
+  ); */
 
+  // Connect to MongoDB
+  console.log(dbConfig.mogodbUrl, "MONGO_URI");
+  try {
+    await mongoose.connect(dbConfig.mogodbUrl);
+    console.log("Connected to MongoDB");
+  } catch (error) {
+    console.log("Error connecting to MongoDB:", error);
+    return;
+  }
+  console.log("Connected to Redis");
   console.log(`Server is running on port ${PORT}`);
 });
+
