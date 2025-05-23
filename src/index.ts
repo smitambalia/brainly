@@ -300,6 +300,7 @@ app.listen(PORT, async () => {
   console.log(dbConfig.mogodbUrl, "MONGO_URI");
   try {
     await mongoose.connect(dbConfig.mogodbUrl);
+
     console.log("Connected to MongoDB");
   } catch (error) {
     console.log("Error connecting to MongoDB:", error);
